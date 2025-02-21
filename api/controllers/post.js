@@ -2,93 +2,91 @@ import { db } from "../connect.js";
 import jwt from "jsonwebtoken";
 import moment from "moment";
 
+
 export const getPosts = (req, res) => {
-  const userId = req.query.userId; // Obtener el userId de la query string
-  const token = req.cookies.accessToken; // Obtener el token de las cookies
 
-  // Verifica si el token está presente
-  console.log("Token:", token); // Verifica si el token está presente
-  if (!token) return res.status(401).json("Not logged in!");
+    const userId = req.query.userId;
 
-  // Verifica y decodifica el token
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) {
-      console.log("Token is invalid:", err); // Agrega un log para el error de token
-      return res.status(403).json("Token is not valid!");
-    }
+    const token = req.cookies.accessToken;
+    if (!token) return res.status(401).json("Not logged in!");
 
-    // Si todo está bien, el userInfo tendrá los datos decodificados del token
-    console.log("UserInfo from token:", userInfo);
+    jwt.verify(token, "secretkey", (err, userInfo) => {
+        if (err) return res.status(403).json("Token is not valid!");
 
-    // Si el userId no es 'undefined', usa el valor proporcionado en la query, sino usa el userId del token
-    console.log("UserId from query:", userId);
-    const q =
-      userId !== "undefined"
-        ? `SELECT p.*, u.id AS user_id, u.name, u.profilePic FROM posts AS p 
-          JOIN users AS u ON (u.id = p.userId) 
-          WHERE p.userId = ? 
-          ORDER BY p.createdAt DESC`
-        : `SELECT p.*, u.id AS user_id, u.name, u.profilePic FROM posts AS p 
-          JOIN users AS u ON (u.id = p.userId)
-          LEFT JOIN relationships AS r ON (p.userId = r.followedUserId) 
-          WHERE r.followerUserId = ? OR p.userId = ? 
-          ORDER BY p.createdAt DESC`;
+        console.log(userId)
 
-    // Si el userId está definido en la query, lo usamos; de lo contrario, usamos el userId del token
-    const values =
-      userId !== "undefined" ? [userId] : [userInfo.id, userInfo.id];
+        const q = userId !== "undefined"
+            ? `SELECT p.*, u.id AS userId, user_name, user_profile_img 
+           FROM poststable AS p 
+           JOIN usertable AS u ON u.id = p.user_id 
+           WHERE p.user_id = ? 
+           ORDER BY p.post_creation_time DESC`
+            : `SELECT p.*, u.id AS userId, user_name, user_profile_img 
+           FROM poststable AS p 
+           JOIN usertable AS u ON u.id = p.user_id 
+           LEFT JOIN userrelationshiptable AS r ON p.user_id = r.followeduserid AND r.followeruserid = ? 
+           WHERE r.followeruserid IS NULL OR p.user_id = ? 
+           ORDER BY p.post_creation_time DESC`;
 
-    // Realizamos la consulta a la base de datos
-    db.query(q, values, (err, data) => {
-      if (err) {
-        console.log("Database error:", err); // Agrega un log en caso de error en la base de datos
-        return res.status(500).json(err);
-      }
+        const values = userId !== "undefined" ? [userId] : [userInfo.id, userInfo.id]
 
-      console.log("Data from DB:", data); // Verifica qué datos se están recibiendo de la base de datos
-
-      // Retorna la respuesta con los datos obtenidos de la base de datos
-      return res.status(200).json(data);
+        db.query(q, values, (err, data) => {
+            if (err) return res.status(500).json(err);
+            return res.status(200).json(data);
+        });
     });
-  });
 };
+
 
 export const addPost = (req, res) => {
-  const token = req.cookies.accessToken;
-  if (!token) return res.status(401).json("Not logged in!");
 
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+    const token = req.cookies.accessToken;
+    if (!token) return res.status(401).json("Not logged in!");
 
-    const q =
-      "INSERT INTO posts(`desc`, `img`, `createdAt`, `userId`) VALUES (?)";
-    const values = [
-      req.body.desc,
-      req.body.img,
-      moment(Date.now()).format("YYYY-MM-DD HH:mm:ss"),
-      userInfo.id,
-    ];
+    jwt.verify(token, "secretkey", (err, userInfo) => {
+        if (err) return res.status(403).json("Token is not valid!");
 
-    db.query(q, [values], (err, data) => {
-      if (err) return res.status(500).json(err);
-      return res.status(200).json("Post has been created.");
+        const q = "INSERT INTO poststable (`post_desc`, `img`, `post_creation_time`, `user_id`, `user_fullname`) VALUES (?, ?, ?, ?, ?)";
+
+        // Fetch user_fullname from usertable using userInfo.id
+        const getUserFullnameQuery = "SELECT `user_fullname` FROM usertable WHERE `id` = ?";
+        db.query(getUserFullnameQuery, [userInfo.id], (getUserErr, userResult) => {
+            if (getUserErr) return res.status(500).json(getUserErr);
+
+            const values = [
+                req.body.post_desc,
+                req.body.img,
+                moment(Date.now()).format("YYYY-MM-DD HH:mm:ss"),
+                userInfo.id,
+                userResult[0].user_fullname  // Get the user_fullname from the query result
+            ];
+
+            db.query(q, values, (postErr, data) => {
+                if (postErr) return res.status(500).json(postErr);
+                return res.status(200).json("Post has been created!");
+            });
+        });
     });
-  });
 };
+
+
+
+
+
 export const deletePost = (req, res) => {
-  const token = req.cookies.accessToken;
-  if (!token) return res.status(401).json("Not logged in!");
 
-  jwt.verify(token, "secretkey", (err, userInfo) => {
-    if (err) return res.status(403).json("Token is not valid!");
+    const token = req.cookies.accessToken;
+    if (!token) return res.status(401).json("Not logged in!");
 
-    const q = "DELETE FROM posts WHERE `id`=? AND `userId` = ?";
+    jwt.verify(token, "secretkey", (err, userInfo) => {
+        if (err) return res.status(403).json("Token is not valid!");
 
-    db.query(q, [req.params.id, userInfo.id], (err, data) => {
-      if (err) return res.status(500).json(err);
-      if (data.affectedRows > 0)
-        return res.status(200).json("Post has been deleted.");
-      return res.status(403).json("You can delete only your post");
+        const q = "DELETE FROM poststable WHERE `post_id`=? AND `user_id`=?";
+
+        db.query(q, [req.params.id, userInfo.id], (err, data) => {
+            if (err) return res.status(500).json(err);
+            if (data.affectedRows > 0) return res.status(200).json("Post has been deleted!");
+            return res.status(403).json("You can delete only your post");
+        });
     });
-  });
 };

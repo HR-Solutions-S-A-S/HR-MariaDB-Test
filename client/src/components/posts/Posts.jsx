@@ -1,15 +1,9 @@
 import Post from "../post/Post";
 import "./posts.scss";
 import { useQuery } from "@tanstack/react-query";
-import { useContext } from "react";
 import { makeRequest } from "../../axios";
-import { AuthContext } from "../../context/authContext";
 
-const Posts = () => {
-  const { currentUser } = useContext(AuthContext);
-  const userId = currentUser?.id;
-
-  console.log(userId);
+const Posts = ({ userId }) => {
   const { isLoading, error, data } = useQuery(["posts"], () =>
     makeRequest.get("/posts?userId=" + userId).then((res) => {
       return res.data;
@@ -22,7 +16,7 @@ const Posts = () => {
         ? "Something went wrong!"
         : isLoading
         ? "loading"
-        : data.map((post) => <Post post={post} key={post.id} />)}
+        : data.map((post) => <Post post={post} key={post.post_id} />)}
     </div>
   );
 };

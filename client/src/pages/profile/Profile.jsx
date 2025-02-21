@@ -11,14 +11,14 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import Posts from "../../components/posts/Posts";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { makeRequest } from "../../axios";
-import { useLocation } from "react-router-dom";
-import { useContext } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useContext, useState } from "react";
 import { AuthContext } from "../../context/authContext";
 import Update from "../../components/update/Update";
-import { useState } from "react";
 
 const Profile = () => {
   const [openUpdate, setOpenUpdate] = useState(false);
+
   const { currentUser } = useContext(AuthContext);
 
   const userId = parseInt(useLocation().pathname.split("/")[2]);
@@ -29,10 +29,12 @@ const Profile = () => {
     })
   );
 
+  console.log("profileData", data);
+
   const { isLoading: rIsLoading, data: relationshipData } = useQuery(
     ["relationship"],
     () =>
-      makeRequest.get("/relationships?followedUserId=" + userId).then((res) => {
+      makeRequest.get("/relationships?followeduserid=" + userId).then((res) => {
         return res.data;
       })
   );
@@ -64,22 +66,24 @@ const Profile = () => {
       ) : (
         <>
           <div className="images">
-            <img src={"/upload/"+data.coverPic} alt="" className="cover" />
-            <img src={"/upload/"+data.profilePic} alt="" className="profilePic" />
+            <img
+              src={"/upload/" + data.user_cover_img}
+              alt=""
+              className="cover"
+            />
+            <img
+              src={"/upload/" + data.user_profile_img}
+              alt=""
+              className="profilePic"
+            />
           </div>
-          <div className="profileContainer">
+          <div className="profileContainer mt-12">
             <div className="uInfo">
               <div className="left">
-                <a href="http://facebook.com">
-                  <FacebookTwoToneIcon fontSize="large" />
-                </a>
-                <a href="http://facebook.com">
-                  <InstagramIcon fontSize="large" />
-                </a>
-                <a href="http://facebook.com">
+                <a href="https://twitter.com/">
                   <TwitterIcon fontSize="large" />
                 </a>
-                <a href="http://facebook.com">
+                <a href="http://facebook.com">  
                   <LinkedInIcon fontSize="large" />
                 </a>
                 <a href="http://facebook.com">
@@ -87,15 +91,15 @@ const Profile = () => {
                 </a>
               </div>
               <div className="center">
-                <span>{data.name}</span>
+              <div className="text-center text-2xl font-bold">{data.user_fullname}</div>
                 <div className="info">
                   <div className="item">
                     <PlaceIcon />
-                    <span>{data.city}</span>
+                    <span>{data.user_city}</span>
                   </div>
                   <div className="item">
                     <LanguageIcon />
-                    <span>{data.website}</span>
+                    <span>{data.user_website}</span>
                   </div>
                 </div>
                 {rIsLoading ? (
@@ -105,11 +109,26 @@ const Profile = () => {
                 ) : (
                   <button onClick={handleFollow}>
                     {relationshipData.includes(currentUser.id)
-                      ? "Following"
-                      : "Follow"}
+                      ? "Follow"
+                      : "Following"}
                   </button>
                 )}
               </div>
+              {data?.user_occ && (
+                <span class="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full dark:bg-green-900 dark:text-green-300">
+                  {data?.user_occ}
+                </span>
+              )}
+
+              <Link to={data?.user_cal} target="_blank">
+                <button
+                  type="button"
+                  class="text-white bg-gray-800 hover:bg-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-gray-700 dark:border-gray-700"
+                >
+                  Calendly
+                </button>
+              </Link>
+
               <div className="right">
                 <EmailOutlinedIcon />
                 <MoreVertIcon />

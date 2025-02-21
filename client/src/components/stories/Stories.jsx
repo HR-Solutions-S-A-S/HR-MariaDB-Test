@@ -1,37 +1,48 @@
-import { useContext } from "react";
 import "./stories.scss";
+import { useContext } from "react";
 import { AuthContext } from "../../context/authContext";
-import { useQuery } from "@tanstack/react-query";
-import { makeRequest } from "../../axios";
 
 const Stories = () => {
   const { currentUser } = useContext(AuthContext);
 
-  const { isLoading, error, data } = useQuery(["stories"], () =>
-    makeRequest.get("/stories").then((res) => {
-      return res.data;
-    })
-  );
+  // Temporary
 
-  //TODO Add story using react-query mutations and use upload function.
+  const stories = [
+    {
+      id: 1,
+      name: "Fahim Amin",
+      img: "https://images.pexels.com/photos/13916254/pexels-photo-13916254.jpeg?auto=compress&cs=tinysrgb&w=1600&lazy=load",
+    },
+    {
+      id: 2,
+      name: "Fahim Amin",
+      img: "https://images.pexels.com/photos/13916254/pexels-photo-13916254.jpeg?auto=compress&cs=tinysrgb&w=1600&lazy=load",
+    },
+    {
+      id: 3,
+      name: "Fahim Amin",
+      img: "https://images.pexels.com/photos/13916254/pexels-photo-13916254.jpeg?auto=compress&cs=tinysrgb&w=1600&lazy=load",
+    },
+    {
+      id: 4,
+      name: "Fahim Amin",
+      img: "https://images.pexels.com/photos/13916254/pexels-photo-13916254.jpeg?auto=compress&cs=tinysrgb&w=1600&lazy=load",
+    },
+  ];
 
   return (
     <div className="stories">
       <div className="story">
-        <img src={"/upload/" + currentUser.profilePic} alt="" />
-        <span>{currentUser.name}</span>
+        <img src={currentUser.user_profile_img} alt="" />
+        <span>{currentUser.user_name}</span>
         <button>+</button>
       </div>
-      {error
-        ? "Something went wrong"
-        : isLoading
-        ? "loading"
-        : data.map((story) => (
-            <div className="story" key={story.id}>
-              <img src={story.img} alt="" />
-              <span>{story.name}</span>
-            </div>
-          ))}
+      {stories.map((story) => (
+        <div className="story" key={story.id}>
+          <img src={story.img} alt="" />
+          <span>{story.name}</span>
+        </div>
+      ))}
     </div>
   );
 };

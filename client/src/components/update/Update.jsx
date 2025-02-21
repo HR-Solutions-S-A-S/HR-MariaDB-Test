@@ -1,22 +1,15 @@
-import { useState } from "react";
-import { makeRequest } from "../../axios";
+import React, { useState } from "react";
 import "./update.scss";
+import { makeRequest } from "../../axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import InputField from "../Form/InputField";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 const Update = ({ setOpenUpdate, user }) => {
-  const [cover, setCover] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [texts, setTexts] = useState({
-    email: user.email,
-    password: user.password,
-    name: user.name,
-    city: user.city,
-    website: user.website,
-  });
+  console.log("fahim", user);
+  const [updateData, setUpdateData] = useState(user);
 
   const upload = async (file) => {
-    console.log(file);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -27,9 +20,8 @@ const Update = ({ setOpenUpdate, user }) => {
     }
   };
 
-  const handleChange = (e) => {
-    setTexts((prev) => ({ ...prev, [e.target.name]: [e.target.value] }));
-  };
+  const handleChange = (e) =>
+    setUpdateData((prev) => ({ ...prev, [e.target.name]: [e.target.value] }));
 
   const queryClient = useQueryClient();
 
@@ -45,109 +37,82 @@ const Update = ({ setOpenUpdate, user }) => {
     }
   );
 
-  const handleClick = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    //TODO: find a better way to get image URL
-
     let coverUrl;
     let profileUrl;
-    coverUrl = cover ? await upload(cover) : user.coverPic;
-    profileUrl = profile ? await upload(profile) : user.profilePic;
 
-    mutation.mutate({ ...texts, coverPic: coverUrl, profilePic: profileUrl });
+    coverUrl = updateData?.user_cover_img ? await upload(updateData?.user_cover_img) : user.user_cover_img;
+    profileUrl = updateData?.user_profile_img ? await upload(updateData?.user_profile_img) : user.user_profile_img;
+
+    mutation.mutate({
+      ...updateData,
+      user_cover_img: coverUrl,
+      user_profile_img: profileUrl,
+    });
     setOpenUpdate(false);
-    setCover(null);
-    setProfile(null);
   };
+
   return (
-    <div className="update">
-      <div className="wrapper">
-        <h1>Update Your Profile</h1>
-        <form>
-          <div className="files">
-            <label htmlFor="cover">
-              <span>Cover Picture</span>
-              <div className="imgContainer">
-                <img
-                  src={
-                    cover
-                      ? URL.createObjectURL(cover)
-                      : "/upload/" + user.coverPic
-                  }
-                  alt=""
-                />
-                <CloudUploadIcon className="icon" />
-              </div>
-            </label>
-            <input
-              type="file"
-              id="cover"
-              style={{ display: "none" }}
-              onChange={(e) => setCover(e.target.files[0])}
-            />
-            <label htmlFor="profile">
-              <span>Profile Picture</span>
-              <div className="imgContainer">
-                <img
-                  src={
-                    profile
-                      ? URL.createObjectURL(profile)
-                      : "/upload/" + user.profilePic
-                  }
-                  alt=""
-                />
-                <CloudUploadIcon className="icon" />
-              </div>
-            </label>
-            <input
-              type="file"
-              id="profile"
-              style={{ display: "none" }}
-              onChange={(e) => setProfile(e.target.files[0])}
-            />
-          </div>
-          <label>Email</label>
-          <input
-            type="text"
-            value={texts.email}
-            name="email"
-            onChange={handleChange}
-          />
-          <label>Password</label>
-          <input
-            type="text"
-            value={texts.password}
-            name="password"
-            onChange={handleChange}
-          />
-          <label>Name</label>
-          <input
-            type="text"
-            value={texts.name}
-            name="name"
-            onChange={handleChange}
-          />
-          <label>Country / City</label>
-          <input
-            type="text"
-            name="city"
-            value={texts.city}
-            onChange={handleChange}
-          />
-          <label>Website</label>
-          <input
-            type="text"
-            name="website"
-            value={texts.website}
-            onChange={handleChange}
-          />
-          <button onClick={handleClick}>Update</button>
-        </form>
-        <button className="close" onClick={() => setOpenUpdate(false)}>
-          close
-        </button>
+    <div className="update bg-slate-600">
+      <div className="flex justify-between mb-4">
+        <div className="text-2xl text-white">Update</div>
+        <XMarkIcon className="close h-6" onClick={() => setOpenUpdate(false)} />
       </div>
+      <form onSubmit={handleSubmit}>
+        <InputField
+          onChange={(e) =>
+            setUpdateData((prev) => ({
+              ...prev,
+              user_cover_img: e.target.files[0],
+            }))
+          }
+          name="user_cover_img"
+          label="Cover Image"
+          // value={updateData?.user_cover_img}
+          type="file"
+        />
+        <InputField
+          onChange={(e) =>
+            setUpdateData((prev) => ({
+              ...prev,
+              user_profile_img: e.target.files[0],
+            }))
+          }
+          name="user_profile_img"
+          label="Profile Image"
+          // value={updateData?.user_profile_img}
+          type="file"
+        />
+        <InputField
+          onChange={handleChange}
+          name="user_fullname"
+          label="Full Name"
+          value={updateData?.user_fullname}
+          type="text"
+        />
+        <InputField
+          onChange={handleChange}
+          name="user_city"
+          label="City"
+          value={updateData?.user_city}
+          type="text"
+        />
+        <InputField
+          onChange={handleChange}
+          name="user_website"
+          label="Website"
+          value={updateData?.user_website}
+          type="text"
+        />
+
+        <button
+          type="submit"
+          class="text-white bg-gray-800 hover:bg-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-gray-700 dark:border-gray-700"
+        >
+          Update
+        </button>
+      </form>
     </div>
   );
 };
