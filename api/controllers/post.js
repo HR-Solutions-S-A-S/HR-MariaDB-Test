@@ -2,91 +2,103 @@ import { db } from "../connect.js";
 import jwt from "jsonwebtoken";
 import moment from "moment";
 
+// Obtener posts (del usuario o del feed)
+export const getPosts = async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) return res.status(401).json({ error: "Not logged in!" });
 
-export const getPosts = (req, res) => {
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
 
     const userId = req.query.userId;
+    console.log("UserID recibido:", userId);
 
-    const token = req.cookies.accessToken;
-    if (!token) return res.status(401).json("Not logged in!");
+    const query =
+      userId !== "undefined"
+        ? `SELECT p.*, u.id AS userId, u.user_name, u.user_profile_img 
+               FROM poststable AS p 
+               JOIN usertable AS u ON u.id = p.user_id 
+               WHERE p.user_id = ? 
+               ORDER BY p.post_creation_time DESC`
+        : `SELECT p.*, u.id AS userId, u.user_name, u.user_profile_img 
+               FROM poststable AS p 
+               JOIN usertable AS u ON u.id = p.user_id 
+               LEFT JOIN userrelationshiptable AS r 
+               ON p.user_id = r.followeduserid AND r.followeruserid = ? 
+               WHERE r.followeruserid IS NULL OR p.user_id = ? 
+               ORDER BY p.post_creation_time DESC`;
 
-    jwt.verify(token, "secretkey", (err, userInfo) => {
-        if (err) return res.status(403).json("Token is not valid!");
+    const values =
+      userId !== "undefined" ? [userId] : [userInfo.id, userInfo.id];
 
-        console.log(userId)
+    const conn = await db.getConnection();
+    const rows = await conn.query(query, values);
+    conn.release();
 
-        const q = userId !== "undefined"
-            ? `SELECT p.*, u.id AS userId, user_name, user_profile_img 
-           FROM poststable AS p 
-           JOIN usertable AS u ON u.id = p.user_id 
-           WHERE p.user_id = ? 
-           ORDER BY p.post_creation_time DESC`
-            : `SELECT p.*, u.id AS userId, user_name, user_profile_img 
-           FROM poststable AS p 
-           JOIN usertable AS u ON u.id = p.user_id 
-           LEFT JOIN userrelationshiptable AS r ON p.user_id = r.followeduserid AND r.followeruserid = ? 
-           WHERE r.followeruserid IS NULL OR p.user_id = ? 
-           ORDER BY p.post_creation_time DESC`;
-
-        const values = userId !== "undefined" ? [userId] : [userInfo.id, userInfo.id]
-
-        db.query(q, values, (err, data) => {
-            if (err) return res.status(500).json(err);
-            return res.status(200).json(data);
-        });
-    });
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error("Error en getPosts:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
+// Crear un nuevo post
+export const addPost = async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) return res.status(401).json({ error: "Not logged in!" });
 
-export const addPost = (req, res) => {
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
 
-    const token = req.cookies.accessToken;
-    if (!token) return res.status(401).json("Not logged in!");
+    const conn = await db.getConnection();
+    const userQuery = "SELECT user_fullname FROM usertable WHERE id = ?";
+    const [user] = await conn.query(userQuery, [userInfo.id]);
 
-    jwt.verify(token, "secretkey", (err, userInfo) => {
-        if (err) return res.status(403).json("Token is not valid!");
+    if (!user) {
+      conn.release();
+      return res.status(404).json({ error: "User not found!" });
+    }
 
-        const q = "INSERT INTO poststable (`post_desc`, `img`, `post_creation_time`, `user_id`, `user_fullname`) VALUES (?, ?, ?, ?, ?)";
+    const postQuery =
+      "INSERT INTO poststable (`post_desc`, `img`, `post_creation_time`, `user_id`, `user_fullname`) VALUES (?, ?, ?, ?, ?)";
+    const values = [
+      req.body.post_desc,
+      req.body.img,
+      moment().format("YYYY-MM-DD HH:mm:ss"),
+      userInfo.id,
+      user.user_fullname,
+    ];
 
-        // Fetch user_fullname from usertable using userInfo.id
-        const getUserFullnameQuery = "SELECT `user_fullname` FROM usertable WHERE `id` = ?";
-        db.query(getUserFullnameQuery, [userInfo.id], (getUserErr, userResult) => {
-            if (getUserErr) return res.status(500).json(getUserErr);
+    await conn.query(postQuery, values);
+    conn.release();
 
-            const values = [
-                req.body.post_desc,
-                req.body.img,
-                moment(Date.now()).format("YYYY-MM-DD HH:mm:ss"),
-                userInfo.id,
-                userResult[0].user_fullname  // Get the user_fullname from the query result
-            ];
-
-            db.query(q, values, (postErr, data) => {
-                if (postErr) return res.status(500).json(postErr);
-                return res.status(200).json("Post has been created!");
-            });
-        });
-    });
+    return res.status(200).json({ message: "Post has been created!" });
+  } catch (err) {
+    console.error("Error en addPost:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
+// Eliminar un post
+export const deletePost = async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) return res.status(401).json({ error: "Not logged in!" });
 
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
 
+    const query = "DELETE FROM poststable WHERE `post_id`=? AND `user_id`=?";
+    const conn = await db.getConnection();
+    const result = await conn.query(query, [req.params.id, userInfo.id]);
+    conn.release();
 
-
-export const deletePost = (req, res) => {
-
-    const token = req.cookies.accessToken;
-    if (!token) return res.status(401).json("Not logged in!");
-
-    jwt.verify(token, "secretkey", (err, userInfo) => {
-        if (err) return res.status(403).json("Token is not valid!");
-
-        const q = "DELETE FROM poststable WHERE `post_id`=? AND `user_id`=?";
-
-        db.query(q, [req.params.id, userInfo.id], (err, data) => {
-            if (err) return res.status(500).json(err);
-            if (data.affectedRows > 0) return res.status(200).json("Post has been deleted!");
-            return res.status(403).json("You can delete only your post");
-        });
-    });
+    if (result.affectedRows > 0) {
+      return res.status(200).json({ message: "Post has been deleted!" });
+    } else {
+      return res.status(403).json({ error: "You can delete only your post" });
+    }
+  } catch (err) {
+    console.error("Error en deletePost:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 };

@@ -1,55 +1,58 @@
 import { db } from "../connect.js";
 import jwt from "jsonwebtoken";
 
-export const getLikes = (req, res) => {
+// Obtener los likes de un post
+export const getLikes = async (req, res) => {
+  try {
+    const conn = await db.getConnection();
+    const query = "SELECT user_id FROM likestable WHERE post_id = ?";
+    const rows = await conn.query(query, [req.query.post_id]);
+    conn.release();
 
-    const q = "SELECT user_id FROM likestable WHERE post_id = ?";
-
-    db.query(q, [req.query.post_id], (err, data) => {
-        if (err) return res.status(500).json(err);
-        return res.status(200).json(data.map(like => like.user_id));
-    });
-}
-
-
-export const addLike = (req, res) => {
-
-    const token = req.cookies.accessToken;
-    if (!token) return res.status(401).json("Not logged in!");
-
-    jwt.verify(token, "secretkey", (err, userInfo) => {
-        if (err) return res.status(403).json("Token is not valid!");
-
-        const q = "INSERT INTO likestable (`user_id`,`post_id`) VALUES (?)";
-
-        const values = [
-            userInfo.id,
-            req.body.post_id
-        ];
-
-
-
-        db.query(q, [values], (err, data) => {
-            if (err) return res.status(500).json(err);
-            return res.status(200).json("Post has been liked!");
-        });
-    });
+    return res.status(200).json(rows.map((like) => like.user_id));
+  } catch (err) {
+    console.error("Error en getLikes:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
+// Dar like a un post
+export const addLike = async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) return res.status(401).json({ error: "Not logged in!" });
 
-export const deleteLike = (req, res) => {
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
 
-    const token = req.cookies.accessToken;
-    if (!token) return res.status(401).json("Not logged in!");
+    const conn = await db.getConnection();
+    const query = "INSERT INTO likestable (`user_id`,`post_id`) VALUES (?, ?)";
+    await conn.query(query, [userInfo.id, req.body.post_id]);
+    conn.release();
 
-    jwt.verify(token, "secretkey", (err, userInfo) => {
-        if (err) return res.status(403).json("Token is not valid!");
+    return res.status(200).json({ message: "Post has been liked!" });
+  } catch (err) {
+    console.error("Error en addLike:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 
-        const q = "DELETE FROM likestable WHERE `user_id` = ? AND `post_id` = ?";
+// Quitar like de un post
+export const deleteLike = async (req, res) => {
+  const token = req.cookies.accessToken;
+  if (!token) return res.status(401).json({ error: "Not logged in!" });
 
-        db.query(q, [userInfo.id, req.query.post_id], (err, data) => {
-            if (err) return res.status(500).json(err);
-            return res.status(200).json("Post has been disliked!");
-        });
-    });
+  try {
+    const userInfo = jwt.verify(token, "secretkey");
+
+    const conn = await db.getConnection();
+    const query =
+      "DELETE FROM likestable WHERE `user_id` = ? AND `post_id` = ?";
+    await conn.query(query, [userInfo.id, req.query.post_id]);
+    conn.release();
+
+    return res.status(200).json({ message: "Post has been disliked!" });
+  } catch (err) {
+    console.error("Error en deleteLike:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 };
