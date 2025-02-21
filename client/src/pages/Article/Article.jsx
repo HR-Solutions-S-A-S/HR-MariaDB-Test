@@ -42,12 +42,11 @@ const Article = () => {
   const {
     isLoading,
     error,
-    data: articleData,
-  } = useQuery(["articles"], () =>
-    makeRequest.get("/articles/get-all-articles").then((res) => {
-      return res.data;
-    })
-  );
+    data: articleData = [],
+  } = useQuery(["articles"], async () => {
+    const res = await makeRequest.get("/articles/get-all-articles");
+    return Array.isArray(res.data) ? res.data : []; // Asegura que sea un array
+  });
 
   const handleInputChange = (e) =>
     setData({ ...data, [e.target.name]: e.target.value });
@@ -61,10 +60,10 @@ const Article = () => {
         // Invalidate and refetch
         queryClient.invalidateQueries(["articles"]);
         toast.success("Article deleted successfully");
-      },  
+      },
       onError: (err) => {
         toast.error("ServerError");
-      }
+      },
     }
   );
 
@@ -126,9 +125,14 @@ const Article = () => {
 
       {/*  Display articles here */}
 
-      {articleData?.map((item) => {
-        return <ArticleCard key={item?.article_id} {...item} onDelete={handleDelete} />;
-      })}
+      {Array.isArray(articleData) &&
+        articleData.map((item) => (
+          <ArticleCard
+            key={item?.article_id}
+            {...item}
+            onDelete={handleDelete}
+          />
+        ))}
     </div>
   );
 };

@@ -84,8 +84,6 @@ const Job = () => {
     deleteMutation.mutate(jobId);
   };
 
-
-
   return (
     <div className="p-5 bg-black min-h-[100vh]">
       <form onSubmit={onSubmit}>
@@ -293,10 +291,11 @@ const Job = () => {
           Cancel
         </button>
       </form>
-      {/* Display jobs here */}
-      {jobPosting?.map((job) => {
-        return <JobCard key={job?.job_id} {...job} onDelete={handleDelete} />;
-      })}
+
+      {Array.isArray(jobPosting) &&
+        jobPosting.map((job) => (
+          <JobCard key={job?.job_id} {...job} onDelete={handleDelete} />
+        ))}
     </div>
   );
 };

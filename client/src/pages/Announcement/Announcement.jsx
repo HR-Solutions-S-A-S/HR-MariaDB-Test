@@ -43,12 +43,11 @@ const Announcement = () => {
   const {
     isLoading,
     error,
-    data: announcementData,
-  } = useQuery(["announcements"], () =>
-    makeRequest.get("/announcements/get-all-announcements").then((res) => {
-      return res.data;
-    })
-  );
+    data: announcementData = [],
+  } = useQuery(["announcements"], async () => {
+    const res = await makeRequest.get("/announcements/get-all-announcements");
+    return Array.isArray(res.data) ? res.data : []; // Asegura que sea un array
+  });
 
   const handleInputChange = (e) =>
     setData({ ...data, [e.target.name]: e.target.value });
@@ -127,16 +126,15 @@ const Announcement = () => {
 
       {/*  Display announcement here */}
 
-      {announcementData?.map((item) => {
-        console.log(item)
-        return (
+      {Array.isArray(announcementData) &&
+        announcementData.map((item) => (
           <AnnouncementCard
             key={item?.announcement_id}
             {...item}
             onDelete={handleDelete}
           />
-        );
-      })}
+        ))}
+
     </div>
   );
 };
